@@ -26,8 +26,17 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Handle list-devs
     if args.list_devs {
         match get_devices() {
-            Ok(devs) => println!("\x1b[1;32mAvailable backlights\x1b[0m:\n{}", devs.join("\n")),
-            Err(err) => println!("{}", err)
+            Ok(devs) => {
+                println!("\x1b[1;32mAvailable backlights\x1b[0m:");
+                let dev_names: Vec<String> = devs.iter()
+                    .map(|d| d.split('/').last().unwrap().to_owned())
+                    .collect();
+                println!("{}", dev_names.join("\n"));
+            },
+            Err(err) => {
+                println!("{}", err);
+                std::process::exit(2);
+            }
         }
         return Ok(());
     }
@@ -58,7 +67,7 @@ fn get_devices() -> Result<Vec<String>, Box<dyn Error>> {
     let mut devices: Vec<String> = vec![];
     let backlight_class_dir = fs::read_dir("/sys/class/backlight/")?;
     for file in backlight_class_dir {
-        devices.push(file?.file_name().to_str().unwrap().to_owned());
+        devices.push(file?.path().to_str().unwrap().to_owned());
     }
 
     Ok(devices)
@@ -69,7 +78,7 @@ fn change_brightness(device_path: &String, args: &Args) -> Result<(), Box<dyn Er
     let mut device = fs::OpenOptions::new()
         .write(true)
         .truncate(true)
-        .open(device_path)?;
+        .open(format!("{}/brightness", device_path))?;
 
     if let Some(val) = args.increment {
         // Increment by val, set to 255 if overflow
@@ -98,7 +107,7 @@ fn change_brightness(device_path: &String, args: &Args) -> Result<(), Box<dyn Er
 }
 
 fn get_brightness(device_path: &String) -> Result<u8, Box<dyn Error>> {
-    let brightness = fs::read_to_string(device_path)?.trim().to_owned();
+    let brightness = fs::read_to_string(format!("{}/brightness", device_path))?.trim().to_owned();
     let val = brightness.parse::<u8>()?;
     
     Ok(val)
