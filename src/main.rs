@@ -46,10 +46,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         || args.set.is_some() 
         || args.get == true {
             let device_path = match &args.device {
-                Some(dev) => format!("/sys/class/backlight/{}/brightness", dev),
+                Some(dev) => format!("/sys/class/backlight/{}", dev),
                 None => {
-                    println!("\x1b[1;31mError:\x1b[0m No device specified");
-                    std::process::exit(1);
+                    match get_devices()?.first() {
+                        Some(device) => device.to_owned(),
+                        None => {
+                            println!("\x1b[1;31mError:\x1b[0m No device was specified and one could not be found automatically");
+                            std::process::exit(1);
+                        }
+                    }
                 }
             };
     
